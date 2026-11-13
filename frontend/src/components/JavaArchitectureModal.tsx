@@ -181,11 +181,11 @@ public class DBConnectionUtil {
     }
 }`,
 
-    'UserDAO.java': `package com.skillbridge.dao;
+    'UserDAO.java': `package com.onestop.dao;
 
-import com.skillbridge.model.User;
-import com.skillbridge.model.UserRole;
-import com.skillbridge.util.DBConnectionUtil;
+import com.onestop.model.User;
+import com.onestop.model.UserRole;
+import com.onestop.util.DBConnectionUtil;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.*;
@@ -220,9 +220,9 @@ public class UserDAO {
     }
 }`,
 
-    'QuotationDAO.java': `package com.skillbridge.dao;
+    'QuotationDAO.java': `package com.onestop.dao;
 
-import com.skillbridge.util.DBConnectionUtil;
+import com.onestop.util.DBConnectionUtil;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -272,12 +272,12 @@ public class QuotationDAO {
     }
 }`,
 
-    'BookingServlet.java': `package com.skillbridge.servlet;
+    'BookingServlet.java': `package com.onestop.servlet;
 
 import com.google.gson.Gson;
-import com.skillbridge.dao.BookingDAO;
-import com.skillbridge.model.Booking;
-import com.skillbridge.model.User;
+import com.onestop.dao.BookingDAO;
+import com.onestop.model.Booking;
+import com.onestop.model.User;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -325,9 +325,9 @@ public class BookingServlet extends HttpServlet {
     }
 }`,
 
-    'RuleBasedRecommendationEngine.java': `package com.skillbridge.ai;
+    'RuleBasedRecommendationEngine.java': `package com.onestop.ai;
 
-import com.skillbridge.model.ProviderProfile;
+import com.onestop.model.ProviderProfile;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -407,13 +407,13 @@ public class RuleBasedRecommendationEngine {
     }
 }`,
 
-    'schema.sql': `-- SkillBridge Comprehensive MySQL Database Schema
--- Database: skillbridge_db
+    'schema.sql': `-- OneStop Comprehensive MySQL Database Schema
+-- Database: onestop_db
 -- Dialect: MySQL 8.0+ (InnoDB Engine)
 -- Architecture: Core Java + JDBC (Zero Spring Boot / JPA)
 
-CREATE DATABASE IF NOT EXISTS skillbridge_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE skillbridge_db;
+CREATE DATABASE IF NOT EXISTS onestop_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE onestop_db;
 
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS admin_audit_logs, service_attachments, invoice_items, invoices, complaints,
@@ -715,8 +715,8 @@ CREATE TABLE admin_audit_logs (
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.skillbridge</groupId>
-    <artifactId>skillbridge-platform</artifactId>
+    <groupId>com.onestop</groupId>
+    <artifactId>onestop-platform</artifactId>
     <version>1.0.0</version>
     <packaging>war</packaging>
 
@@ -774,7 +774,7 @@ CREATE TABLE admin_audit_logs (
     </dependencies>
 
     <build>
-        <finalName>skillbridge</finalName>
+        <finalName>onestop</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

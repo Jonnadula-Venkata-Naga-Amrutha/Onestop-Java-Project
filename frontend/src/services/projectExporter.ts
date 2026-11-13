@@ -11,8 +11,8 @@ export async function downloadFullProjectZip() {
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.skillbridge</groupId>
-    <artifactId>skillbridge-platform</artifactId>
+    <groupId>com.onestop</groupId>
+    <artifactId>onestop-platform</artifactId>
     <version>1.0.0</version>
     <packaging>war</packaging>
 
@@ -55,7 +55,7 @@ export async function downloadFullProjectZip() {
 
   zip.file(
     'README.md',
-    `# SkillBridge — Smart Local Services Platform
+    `# OneStop — Smart Local Services Platform
 Production-inspired Local Services Marketplace with 3D UI, Explainable AI, and Core Java + JDBC + MySQL Architecture.
 
 ## MySQL Database Setup:
@@ -64,7 +64,7 @@ Production-inspired Local Services Marketplace with 3D UI, Explainable AI, and C
 
 ## Java Backend Setup (Apache Tomcat):
 1. mvn clean package
-2. Deploy target/skillbridge.war into your Tomcat 9/10 webapps folder.
+2. Deploy target/onestop.war into your Tomcat 9/10 webapps folder.
 
 ## Frontend & Node Dev Server:
 1. npm install
@@ -87,11 +87,11 @@ Production-inspired Local Services Marketplace with 3D UI, Explainable AI, and C
   }
 
   // Java Directory
-  const javaDir = zip.folder('src/main/java/com/skillbridge');
+  const javaDir = zip.folder('src/main/java/com/onestop');
   if (javaDir) {
     javaDir.file(
       'model/Booking.java',
-      `package com.skillbridge.model;
+      `package com.onestop.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -140,7 +140,7 @@ public class Booking {
 
     javaDir.file(
       'model/BookingStatus.java',
-      `package com.skillbridge.model;
+      `package com.onestop.model;
 
 public enum BookingStatus {
     PENDING, QUOTE_SENT, CONFIRMED, PROVIDER_ON_THE_WAY, IN_PROGRESS, COMPLETED, CANCELLED, REJECTED
@@ -149,7 +149,7 @@ public enum BookingStatus {
 
     javaDir.file(
       'dao/DBConnectionUtil.java',
-      `package com.skillbridge.dao;
+      `package com.onestop.dao;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -161,7 +161,7 @@ public class DBConnectionUtil {
 
     static {
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:mysql://localhost:3306/skillbridge_db?useSSL=false&serverTimezone=UTC");
+        config.setJdbcUrl("jdbc:mysql://localhost:3306/onestop_db?useSSL=false&serverTimezone=UTC");
         config.setUsername("root");
         config.setPassword("password");
         config.setMaximumPoolSize(15);
@@ -176,9 +176,9 @@ public class DBConnectionUtil {
 
     javaDir.file(
       'dao/BookingDAO.java',
-      `package com.skillbridge.dao;
+      `package com.onestop.dao;
 
-import com.skillbridge.model.Booking;
+import com.onestop.model.Booking;
 import java.sql.*;
 
 public class BookingDAO {
@@ -207,7 +207,7 @@ public class BookingDAO {
 
     javaDir.file(
       'ai/RuleBasedRecommendationEngine.java',
-      `package com.skillbridge.ai;
+      `package com.onestop.ai;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -232,7 +232,7 @@ public class RuleBasedRecommendationEngine {
   const url = URL.createObjectURL(content);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'skillbridge-full-project.zip';
+  a.download = 'onestop-full-project.zip';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
