@@ -1,0 +1,18 @@
+{
+  "name": "skillbridge-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend/node run dev",
+    "build": "npm --prefix frontend run build && npm --prefix backend/node run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend": "npm --prefix backend/node run build",
+    "compile:java": "mvn -f backend/java/pom.xml compile",
+    "package:java": "mvn -f backend/java/pom.xml clean package"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

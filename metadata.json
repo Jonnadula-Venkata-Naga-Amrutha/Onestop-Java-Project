@@ -1,0 +1,6 @@
+{
+  "name": "SkillBridge — Smart Local Services Platform",
+  "description": "Smart local services platform connecting customers with trusted professionals using 3D UI, AI-powered matching, quotations, emergency bookings, and Core Java + JDBC architecture.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
