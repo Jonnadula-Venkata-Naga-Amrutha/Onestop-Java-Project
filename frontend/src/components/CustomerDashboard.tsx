@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Booking, Quotation, User, Review } from '../types';
+import { Booking, Invoice, Quotation, User, Review } from '../types';
 import { Language } from '../data/translations';
 import { dbService } from '../services/storage';
 import {
@@ -20,6 +20,7 @@ interface CustomerDashboardProps {
   currentUser: User;
   bookings: Booking[];
   quotations: Quotation[];
+  invoices: Invoice[];
   reviews: Review[];
   lang: Language;
   onOpenCompareQuotes: (bookingId: string) => void;
@@ -31,6 +32,7 @@ export default function CustomerDashboard({
   currentUser,
   bookings,
   quotations,
+  invoices,
   reviews,
   lang,
   onOpenCompareQuotes,
@@ -52,24 +54,21 @@ export default function CustomerDashboard({
   const [complaintSubject, setComplaintSubject] = useState('');
   const [complaintDesc, setComplaintDesc] = useState('');
   const [complaintSuccess, setComplaintSuccess] = useState('');
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
-  const handleReviewSubmit = (e: React.FormEvent) => {
+  const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewBooking) return;
 
-    const res = dbService.addReview({
+    try {
+      await dbService.addReview({
       bookingId: reviewBooking.id,
-      customerId: currentUser.id,
-      customerName: currentUser.fullName,
-      providerId: reviewBooking.providerId,
       rating,
       comment,
       punctualityRating: rating,
       qualityRating: rating,
       valueRating: rating,
-    });
-
-    if (res.success) {
+      });
       setReviewSuccess('Review published successfully!');
       try {
         confetti({ particleCount: 40, spread: 50 });
@@ -82,26 +81,21 @@ export default function CustomerDashboard({
         setComment('');
         onRefreshData();
       }, 1500);
-    } else {
-      alert(res.message);
+    } catch (reason) {
+      alert(reason instanceof Error ? reason.message : 'Review could not be published.');
     }
   };
 
-  const handleComplaintSubmit = (e: React.FormEvent) => {
+  const handleComplaintSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!complaintBooking) return;
 
-    const res = dbService.createComplaint({
-      bookingId: complaintBooking.id,
-      bookingReference: complaintBooking.bookingReference,
-      filedByUser: currentUser,
-      againstUserId: complaintBooking.providerId,
-      againstName: complaintBooking.providerName,
-      subject: complaintSubject,
-      description: complaintDesc,
-    });
-
-    if (res.success) {
+    try {
+      await dbService.createComplaint({
+        bookingId: complaintBooking.id,
+        subject: complaintSubject,
+        description: complaintDesc,
+      });
       setComplaintSuccess('Issue report filed and assigned to administrator!');
       setTimeout(() => {
         setComplaintBooking(null);
@@ -110,6 +104,8 @@ export default function CustomerDashboard({
         setComplaintDesc('');
         onRefreshData();
       }, 1500);
+    } catch (reason) {
+      alert(reason instanceof Error ? reason.message : 'Issue report could not be submitted.');
     }
   };
 
@@ -271,9 +267,13 @@ export default function CustomerDashboard({
                         </button>
                         {b.status === 'PENDING' && (
                           <button
-                            onClick={() => {
-                              dbService.updateBookingStatus(b.id, 'CANCELLED', 'Cancelled by customer', currentUser);
-                              onRefreshData();
+                            onClick={async () => {
+                              try {
+                                await dbService.updateBookingStatus(b.id, 'CANCELLED', 'Cancelled by customer');
+                                onRefreshData();
+                              } catch (reason) {
+                                alert(reason instanceof Error ? reason.message : 'Booking could not be cancelled.');
+                              }
                             }}
                             className="px-3 py-1.5 text-red-700 hover:bg-red-50 rounded-lg font-medium"
                           >
@@ -339,12 +339,15 @@ export default function CustomerDashboard({
                           <span>Reviewed ({existingReview.rating}★)</span>
                         </div>
                       )}
-                      <button
-                        onClick={() => alert(`Invoice #${b.bookingReference}-INV generated.\nTotal: ₹${b.finalTotal || b.estimatedTotal}\nPayment: Settled via UPI.`)}
-                        className="px-3 py-1.5 border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-lg font-medium"
-                      >
-                        Receipt
-                      </button>
+                      {invoices.filter(invoice => invoice.bookingId === b.id).map(invoice => (
+                        <button
+                          key={invoice.id}
+                          onClick={() => setSelectedInvoice(invoice)}
+                          className="px-3 py-1.5 border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-lg font-medium"
+                        >
+                          View invoice
+                        </button>
+                      ))}
                     </div>
                   </div>
                 );
@@ -352,6 +355,47 @@ export default function CustomerDashboard({
             </div>
           )}
         </div>
+
+        {selectedInvoice && (
+          <div
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+            onClick={() => setSelectedInvoice(null)}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="invoice-title"
+              className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+              onClick={event => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 id="invoice-title" className="text-xl font-bold text-[#173D32]">Invoice {selectedInvoice.invoiceNumber}</h2>
+                  <p className="mt-1 text-xs text-gray-500">Issued {new Date(selectedInvoice.issuedAt).toLocaleDateString()}</p>
+                </div>
+                <button onClick={() => setSelectedInvoice(null)} className="text-sm text-gray-600">Close</button>
+              </div>
+              <div className="mt-5 space-y-2 border-y py-4 text-sm">
+                {selectedInvoice.items.map(item => (
+                  <div key={item.id} className="flex justify-between gap-4">
+                    <span>{item.itemDescription} × {item.quantity}</span>
+                    <span>₹{item.totalPrice}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between font-bold">
+                  <span>Total</span><span>₹{selectedInvoice.totalAmount}</span>
+                </div>
+              </div>
+              <p className="mt-4 text-sm">
+                Payment status: <strong>{selectedInvoice.paymentStatus}</strong>
+                <span className="ml-1 text-gray-500">({selectedInvoice.paymentMethod})</span>
+              </p>
+              {selectedInvoice.paymentStatus !== 'PAID' && (
+                <p className="mt-2 text-xs text-amber-800">Payment is pending; this invoice does not indicate an online payment.</p>
+              )}
+            </section>
+          </div>
+        )}
 
         {/* Modal: Write Review */}
         {reviewBooking && (

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   Booking,
   Complaint,
+  AdminAuditLog,
   ProviderProfile,
   User,
   VerificationRequest
@@ -24,6 +25,7 @@ interface AdminDashboardProps {
   users: User[];
   providers: ProviderProfile[];
   bookings: Booking[];
+  auditLogs: AdminAuditLog[];
   verifications: VerificationRequest[];
   complaints: Complaint[];
   lang: Language;
@@ -35,12 +37,13 @@ export default function AdminDashboard({
   users,
   providers,
   bookings,
+  auditLogs,
   verifications,
   complaints,
   lang,
   onRefreshData,
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'verifications' | 'complaints' | 'users'>('verifications');
+  const [activeTab, setActiveTab] = useState<'verifications' | 'complaints' | 'users' | 'bookings' | 'audit'>('verifications');
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
 
@@ -54,38 +57,42 @@ export default function AdminDashboard({
     ? Math.round((completedBookings.length / bookings.length) * 100)
     : 100;
 
-  const handleApproveVerification = (verifId: string) => {
-    const res = dbService.updateVerificationStatus(
-      verifId,
-      'APPROVED',
-      'Trade license validated against state registry by Admin.',
-      currentUser
-    );
-    if (res.success) onRefreshData();
+  const handleApproveVerification = async (verifId: string) => {
+    try {
+      await dbService.updateVerificationStatus(verifId, 'APPROVED', 'Reviewed and approved by administrator.');
+      onRefreshData();
+    } catch (reason) {
+      alert(reason instanceof Error ? reason.message : 'Verification could not be approved.');
+    }
   };
 
-  const handleRejectVerification = (verifId: string) => {
-    const res = dbService.updateVerificationStatus(
-      verifId,
-      'REJECTED',
-      'Incomplete municipal registration documents provided.',
-      currentUser
-    );
-    if (res.success) onRefreshData();
+  const handleRejectVerification = async (verifId: string) => {
+    try {
+      await dbService.updateVerificationStatus(verifId, 'REJECTED', 'Submitted documentation does not meet verification requirements.');
+      onRefreshData();
+    } catch (reason) {
+      alert(reason instanceof Error ? reason.message : 'Verification could not be rejected.');
+    }
   };
 
-  const handleResolveComplaint = (complaintId: string) => {
+  const handleResolveComplaint = async (complaintId: string) => {
     if (!resolutionNotes.trim()) return;
-    const res = dbService.resolveComplaint(
-      complaintId,
-      resolutionNotes,
-      'RESOLVED',
-      currentUser
-    );
-    if (res.success) {
+    try {
+      await dbService.resolveComplaint(complaintId, 'RESOLVED', resolutionNotes);
       setSelectedComplaintId(null);
       setResolutionNotes('');
       onRefreshData();
+    } catch (reason) {
+      alert(reason instanceof Error ? reason.message : 'Complaint could not be resolved.');
+    }
+  };
+
+  const handleToggleUserStatus = async (user: User) => {
+    try {
+      await dbService.updateUserStatus(user.id, user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE');
+      onRefreshData();
+    } catch (reason) {
+      alert(reason instanceof Error ? reason.message : 'User status could not be updated.');
     }
   };
 
@@ -180,6 +187,22 @@ export default function AdminDashboard({
             }`}
           >
             User Directory ({users.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('bookings')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              activeTab === 'bookings' ? 'bg-[#173D32] text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Bookings ({bookings.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('audit')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              activeTab === 'audit' ? 'bg-[#173D32] text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Audit log
           </button>
         </div>
 
@@ -330,6 +353,7 @@ export default function AdminDashboard({
                   <th className="p-3 font-semibold">Role</th>
                   <th className="p-3 font-semibold">Phone</th>
                   <th className="p-3 font-semibold">Status</th>
+                  <th className="p-3 font-semibold">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -349,11 +373,64 @@ export default function AdminDashboard({
                       </span>
                     </td>
                     <td className="p-3 font-mono-code text-gray-600">{u.phone}</td>
-                    <td className="p-3 text-emerald-700 font-semibold">{u.status}</td>
+                    <td className={`p-3 font-semibold ${u.status === 'ACTIVE' ? 'text-emerald-700' : 'text-red-700'}`}>{u.status}</td>
+                    <td className="p-3">
+                      {u.id !== currentUser.id && (
+                        <button
+                          onClick={() => handleToggleUserStatus(u)}
+                          className="rounded-lg border border-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-50"
+                        >
+                          {u.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {activeTab === 'bookings' && (
+          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-xs">
+            <table className="w-full min-w-[760px] text-left text-xs">
+              <thead className="border-b bg-[#F7F5EF] text-gray-600">
+                <tr>
+                  <th className="p-3">Reference</th><th className="p-3">Customer</th>
+                  <th className="p-3">Provider</th><th className="p-3">Service</th>
+                  <th className="p-3">Date</th><th className="p-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {bookings.map(booking => (
+                  <tr key={booking.id}>
+                    <td className="p-3 font-mono-code font-semibold">{booking.bookingReference}</td>
+                    <td className="p-3">{booking.customerName}</td>
+                    <td className="p-3">{booking.providerName}</td>
+                    <td className="p-3">{booking.serviceTitle}</td>
+                    <td className="p-3">{booking.scheduledDate}</td>
+                    <td className="p-3">{booking.status.replace(/_/g, ' ')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {bookings.length === 0 && <p className="p-6 text-center text-gray-500">No bookings found.</p>}
+          </div>
+        )}
+
+        {activeTab === 'audit' && (
+          <div className="space-y-3">
+            {auditLogs.map(log => (
+              <article key={log.id} className="rounded-xl border border-gray-200 bg-white p-4 text-xs">
+                <div className="flex flex-wrap justify-between gap-2">
+                  <strong>{log.actionType.replace(/_/g, ' ')}</strong>
+                  <time className="text-gray-500">{new Date(log.createdAt).toLocaleString()}</time>
+                </div>
+                <p className="mt-1 text-gray-700">{log.changeSummary}</p>
+                <p className="mt-1 text-gray-500">{log.adminName} · {log.entityName} · {log.entityId}</p>
+              </article>
+            ))}
+            {auditLogs.length === 0 && <p className="rounded-xl bg-white p-6 text-center text-gray-500">No administrative actions recorded.</p>}
           </div>
         )}
 

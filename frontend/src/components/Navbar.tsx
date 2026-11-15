@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, UserRole } from '../types';
+import { User } from '../types';
 import { Language } from '../data/translations';
 import {
   Bell,
@@ -11,8 +11,9 @@ import {
 } from 'lucide-react';
 
 interface NavbarProps {
-  currentUser: User;
-  onSelectRole: (role: UserRole) => void;
+  currentUser: User | null;
+  onOpenAuth: () => void;
+  onLogout: () => void;
   lang: Language;
   onToggleLang: () => void;
   unreadCount: number;
@@ -26,7 +27,8 @@ interface NavbarProps {
 
 export default function Navbar({
   currentUser,
-  onSelectRole,
+  onOpenAuth,
+  onLogout,
   lang,
   onToggleLang,
   unreadCount,
@@ -137,67 +139,37 @@ export default function Navbar({
               )}
             </button>
 
-            {/* Role Switcher & Profile Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#173D32] bg-[#A7BDA9]/20 hover:bg-[#A7BDA9]/30 rounded-lg border border-[#173D32]/10 transition-colors whitespace-nowrap shrink-0"
-              >
-                <UserIcon className="w-3.5 h-3.5" />
-                <span className="font-semibold capitalize">
-                  {currentUser.role === 'CUSTOMER' ? 'Customer' : currentUser.role === 'PROVIDER' ? 'Provider' : 'Admin'}
-                </span>
-                <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+            {currentUser ? (
+              <div className="relative">
+                <button
+                  onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#173D32] bg-[#A7BDA9]/20 hover:bg-[#A7BDA9]/30 rounded-lg border border-[#173D32]/10 transition-colors whitespace-nowrap shrink-0"
+                >
+                  <UserIcon className="w-3.5 h-3.5" />
+                  <span className="font-semibold capitalize">
+                    {currentUser.role === 'CUSTOMER' ? 'Customer' : currentUser.role === 'PROVIDER' ? 'Provider' : 'Admin'}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                </button>
+                {roleDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-[#173D32]/10 py-2 z-50 text-xs">
+                    <div className="px-3 py-2 border-b border-gray-100 text-gray-500">
+                      <div className="font-semibold text-gray-900">{currentUser.fullName}</div>
+                      <div className="text-[11px] truncate">{currentUser.email}</div>
+                    </div>
+                    <button onClick={() => { onLogout(); setRoleDropdownOpen(false); }}
+                      className="w-full text-left px-3 py-2 text-red-700 hover:bg-red-50">
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button onClick={onOpenAuth}
+                className="px-4 py-2 text-xs font-semibold text-[#173D32] bg-white border border-[#173D32]/20 rounded-lg hover:bg-[#173D32]/5">
+                Sign in
               </button>
-
-              {roleDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-[#173D32]/10 py-2 z-50 text-xs">
-                  <div className="px-3 py-2 border-b border-gray-100 text-gray-500">
-                    <div className="font-semibold text-gray-900">{currentUser.fullName}</div>
-                    <div className="text-[11px] truncate">{currentUser.email}</div>
-                  </div>
-                  <div className="px-3 py-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                    Switch Test Persona
-                  </div>
-                  <button
-                    onClick={() => {
-                      onSelectRole('CUSTOMER');
-                      setRoleDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 hover:bg-[#F7F5EF] flex items-center justify-between ${
-                      currentUser.role === 'CUSTOMER' ? 'font-bold text-[#173D32]' : 'text-gray-700'
-                    }`}
-                  >
-                    <span>Customer (Ramesh)</span>
-                    {currentUser.role === 'CUSTOMER' && <span className="w-1.5 h-1.5 rounded-full bg-[#173D32]" />}
-                  </button>
-                  <button
-                    onClick={() => {
-                      onSelectRole('PROVIDER');
-                      setRoleDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 hover:bg-[#F7F5EF] flex items-center justify-between ${
-                      currentUser.role === 'PROVIDER' ? 'font-bold text-[#173D32]' : 'text-gray-700'
-                    }`}
-                  >
-                    <span>Provider (Rajesh Kumar)</span>
-                    {currentUser.role === 'PROVIDER' && <span className="w-1.5 h-1.5 rounded-full bg-[#173D32]" />}
-                  </button>
-                  <button
-                    onClick={() => {
-                      onSelectRole('ADMIN');
-                      setRoleDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 hover:bg-[#F7F5EF] flex items-center justify-between ${
-                      currentUser.role === 'ADMIN' ? 'font-bold text-[#173D32]' : 'text-gray-700'
-                    }`}
-                  >
-                    <span>Admin (Super Admin)</span>
-                    {currentUser.role === 'ADMIN' && <span className="w-1.5 h-1.5 rounded-full bg-[#173D32]" />}
-                  </button>
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Primary Action Button */}
             <button

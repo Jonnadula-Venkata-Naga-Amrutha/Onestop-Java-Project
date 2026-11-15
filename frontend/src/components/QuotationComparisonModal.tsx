@@ -23,15 +23,26 @@ export default function QuotationComparisonModal({
 }: QuotationComparisonModalProps) {
   const currentQuotes = quotations.filter(q => q.bookingId === bookingId);
 
-  const handleAccept = (quoteId: string) => {
-    const res = dbService.acceptQuotation(quoteId, currentUser);
-    if (res.success) {
+  const handleAccept = async (quoteId: string) => {
+    try {
+      await dbService.acceptQuotation(quoteId);
       try {
         confetti({ particleCount: 50, spread: 60 });
       } catch {
         // ignore
       }
       onQuotationAccepted();
+    } catch (reason) {
+      alert(reason instanceof Error ? reason.message : 'Quotation could not be accepted.');
+    }
+  };
+
+  const handleDecline = async (quoteId: string) => {
+    try {
+      await dbService.declineQuotation(quoteId);
+      onQuotationAccepted();
+    } catch (reason) {
+      alert(reason instanceof Error ? reason.message : 'Quotation could not be declined.');
     }
   };
 
@@ -159,13 +170,21 @@ export default function QuotationComparisonModal({
                   {/* Accept CTA Button */}
                   <div>
                     {q.status === 'PENDING' && (
-                      <button
-                        onClick={() => handleAccept(q.id)}
-                        className="w-full py-2.5 px-3 rounded-xl bg-[#173D32] hover:bg-[#102B25] text-white font-semibold text-xs transition-transform active:scale-95 shadow-sm flex items-center justify-center gap-1.5"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Accept & Award Booking</span>
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleDecline(q.id)}
+                          className="flex-1 py-2.5 px-3 rounded-xl border border-red-200 text-red-700 hover:bg-red-50 font-semibold text-xs"
+                        >
+                          Decline
+                        </button>
+                        <button
+                          onClick={() => handleAccept(q.id)}
+                          className="flex-1 py-2.5 px-3 rounded-xl bg-[#173D32] hover:bg-[#102B25] text-white font-semibold text-xs transition-transform active:scale-95 shadow-sm flex items-center justify-center gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Accept & Award Booking</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

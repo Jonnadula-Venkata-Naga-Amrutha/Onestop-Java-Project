@@ -1,5 +1,5 @@
 -- ====================================================================
--- OneStop — Smart Local Services Platform
+-- ONESTOP — Smart Local Services Platform
 -- Database: onestop_db
 -- Dialect: MySQL 8.0+ (InnoDB Engine)
 -- Character Set: utf8mb4 / Collation: utf8mb4_unicode_ci
@@ -13,36 +13,11 @@ COLLATE utf8mb4_unicode_ci;
 
 USE onestop_db;
 
--- Disable Foreign Key Checks during setup / recreation
-SET FOREIGN_KEY_CHECKS = 0;
-
-DROP TABLE IF EXISTS admin_audit_logs;
-DROP TABLE IF EXISTS service_attachments;
-DROP TABLE IF EXISTS invoice_items;
-DROP TABLE IF EXISTS invoices;
-DROP TABLE IF EXISTS complaints;
-DROP TABLE IF EXISTS verification_requests;
-DROP TABLE IF EXISTS notifications;
-DROP TABLE IF EXISTS favorites;
-DROP TABLE IF EXISTS reviews;
-DROP TABLE IF EXISTS quotations;
-DROP TABLE IF EXISTS booking_status_history;
-DROP TABLE IF EXISTS bookings;
-DROP TABLE IF EXISTS provider_availability;
-DROP TABLE IF EXISTS service_areas;
-DROP TABLE IF EXISTS provider_services;
-DROP TABLE IF EXISTS service_categories;
-DROP TABLE IF EXISTS provider_profiles;
-DROP TABLE IF EXISTS customer_profiles;
-DROP TABLE IF EXISTS users;
-
-SET FOREIGN_KEY_CHECKS = 1;
-
 -- ====================================================================
 -- Table 1: users
 -- Core authentication credentials, access roles, and account status
 -- ====================================================================
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(64) NOT NULL,
     email VARCHAR(191) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -62,7 +37,7 @@ CREATE TABLE users (
 -- Table 2: customer_profiles
 -- Regional address, municipal ward, and localization preferences
 -- ====================================================================
-CREATE TABLE customer_profiles (
+CREATE TABLE IF NOT EXISTS customer_profiles (
     id VARCHAR(64) NOT NULL,
     user_id VARCHAR(64) NOT NULL,
     address_line VARCHAR(255) NULL,
@@ -81,7 +56,7 @@ CREATE TABLE customer_profiles (
 -- Table 3: provider_profiles
 -- Trade business name, experience, rating, emergency dispatch readiness
 -- ====================================================================
-CREATE TABLE provider_profiles (
+CREATE TABLE IF NOT EXISTS provider_profiles (
     id VARCHAR(64) NOT NULL,
     user_id VARCHAR(64) NOT NULL,
     business_name VARCHAR(160) NOT NULL,
@@ -110,7 +85,7 @@ CREATE TABLE provider_profiles (
 -- Table 4: service_categories
 -- Standardized trade service categories with baseline pricing
 -- ====================================================================
-CREATE TABLE service_categories (
+CREATE TABLE IF NOT EXISTS service_categories (
     id VARCHAR(64) NOT NULL,
     code VARCHAR(32) NOT NULL,
     name_en VARCHAR(100) NOT NULL,
@@ -128,7 +103,7 @@ CREATE TABLE service_categories (
 -- Table 5: provider_services
 -- Specific skills, hourly or fixed offerings listed by providers
 -- ====================================================================
-CREATE TABLE provider_services (
+CREATE TABLE IF NOT EXISTS provider_services (
     id VARCHAR(64) NOT NULL,
     provider_id VARCHAR(64) NOT NULL,
     category_id VARCHAR(64) NOT NULL,
@@ -149,7 +124,7 @@ CREATE TABLE provider_services (
 -- Table 6: service_areas
 -- Geographic coverage, municipal localities, and delivery radii
 -- ====================================================================
-CREATE TABLE service_areas (
+CREATE TABLE IF NOT EXISTS service_areas (
     id VARCHAR(64) NOT NULL,
     provider_id VARCHAR(64) NOT NULL,
     city VARCHAR(64) NOT NULL,
@@ -165,7 +140,7 @@ CREATE TABLE service_areas (
 -- Table 7: provider_availability
 -- Weekly schedule and working hours for calendar slot bookings
 -- ====================================================================
-CREATE TABLE provider_availability (
+CREATE TABLE IF NOT EXISTS provider_availability (
     id VARCHAR(64) NOT NULL,
     provider_id VARCHAR(64) NOT NULL,
     day_of_week TINYINT NOT NULL COMMENT '0=Sun, 1=Mon, ..., 6=Sat',
@@ -181,12 +156,13 @@ CREATE TABLE provider_availability (
 -- Table 8: bookings
 -- Complete transactional service booking lifecycle
 -- ====================================================================
-CREATE TABLE bookings (
+CREATE TABLE IF NOT EXISTS bookings (
     id VARCHAR(64) NOT NULL,
     booking_reference VARCHAR(32) NOT NULL,
     customer_id VARCHAR(64) NOT NULL,
     provider_id VARCHAR(64) NOT NULL,
     service_id VARCHAR(64) NULL,
+    service_title VARCHAR(150) NOT NULL DEFAULT 'General Service',
     category_id VARCHAR(64) NOT NULL,
     problem_description TEXT NOT NULL,
     service_address VARCHAR(255) NOT NULL,
@@ -225,7 +201,7 @@ CREATE TABLE bookings (
 -- Table 9: booking_status_history
 -- Immutable audit log of every booking transition
 -- ====================================================================
-CREATE TABLE booking_status_history (
+CREATE TABLE IF NOT EXISTS booking_status_history (
     id BIGINT AUTO_INCREMENT NOT NULL,
     booking_id VARCHAR(64) NOT NULL,
     from_status VARCHAR(32) NOT NULL,
@@ -244,7 +220,7 @@ CREATE TABLE booking_status_history (
 -- Table 10: quotations
 -- Itemized estimates submitted by providers for customer comparison
 -- ====================================================================
-CREATE TABLE quotations (
+CREATE TABLE IF NOT EXISTS quotations (
     id VARCHAR(64) NOT NULL,
     booking_id VARCHAR(64) NOT NULL,
     provider_id VARCHAR(64) NOT NULL,
@@ -270,7 +246,7 @@ CREATE TABLE quotations (
 -- Table 11: reviews
 -- Customer feedback restricted to completed bookings (1 per booking)
 -- ====================================================================
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
     id VARCHAR(64) NOT NULL,
     booking_id VARCHAR(64) NOT NULL,
     customer_id VARCHAR(64) NOT NULL,
@@ -297,7 +273,7 @@ CREATE TABLE reviews (
 -- Table 12: favorites
 -- Customer bookmarks for preferred technicians
 -- ====================================================================
-CREATE TABLE favorites (
+CREATE TABLE IF NOT EXISTS favorites (
     id VARCHAR(64) NOT NULL,
     customer_id VARCHAR(64) NOT NULL,
     provider_id VARCHAR(64) NOT NULL,
@@ -312,7 +288,7 @@ CREATE TABLE favorites (
 -- Table 13: notifications
 -- In-app alert queue with unread status tracking
 -- ====================================================================
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
     id VARCHAR(64) NOT NULL,
     user_id VARCHAR(64) NOT NULL,
     title VARCHAR(150) NOT NULL,
@@ -330,7 +306,7 @@ CREATE TABLE notifications (
 -- Table 14: verification_requests
 -- Government trade licenses & identity review documents
 -- ====================================================================
-CREATE TABLE verification_requests (
+CREATE TABLE IF NOT EXISTS verification_requests (
     id VARCHAR(64) NOT NULL,
     provider_id VARCHAR(64) NOT NULL,
     document_type ENUM('TRADE_LICENSE', 'AADHAAR', 'GOVT_ID', 'CERTIFICATE') NOT NULL,
@@ -350,7 +326,7 @@ CREATE TABLE verification_requests (
 -- Table 15: complaints
 -- Dispute management and administrative resolution records
 -- ====================================================================
-CREATE TABLE complaints (
+CREATE TABLE IF NOT EXISTS complaints (
     id VARCHAR(64) NOT NULL,
     booking_id VARCHAR(64) NOT NULL,
     filed_by_user_id VARCHAR(64) NOT NULL,
@@ -373,7 +349,7 @@ CREATE TABLE complaints (
 -- Table 16: invoices
 -- Final itemized financial billing statements
 -- ====================================================================
-CREATE TABLE invoices (
+CREATE TABLE IF NOT EXISTS invoices (
     id VARCHAR(64) NOT NULL,
     invoice_number VARCHAR(64) NOT NULL,
     booking_id VARCHAR(64) NOT NULL,
@@ -383,8 +359,8 @@ CREATE TABLE invoices (
     tax_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     total_amount DECIMAL(10,2) NOT NULL,
-    payment_status ENUM('UNPAID', 'PAID', 'REFUNDED') NOT NULL DEFAULT 'PAID',
-    payment_method VARCHAR(50) NOT NULL DEFAULT 'UPI',
+    payment_status ENUM('UNPAID', 'PAID', 'REFUNDED') NOT NULL DEFAULT 'UNPAID',
+    payment_method VARCHAR(50) NOT NULL DEFAULT 'NOT_RECORDED',
     issued_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_invoice_number (invoice_number),
@@ -400,7 +376,7 @@ CREATE TABLE invoices (
 -- Table 17: invoice_items
 -- Itemized line breakdown of labor and materials
 -- ====================================================================
-CREATE TABLE invoice_items (
+CREATE TABLE IF NOT EXISTS invoice_items (
     id VARCHAR(64) NOT NULL,
     invoice_id VARCHAR(64) NOT NULL,
     item_description VARCHAR(255) NOT NULL,
@@ -416,11 +392,13 @@ CREATE TABLE invoice_items (
 -- Table 18: service_attachments
 -- Problem photographs, blueprints, and proof documents
 -- ====================================================================
-CREATE TABLE service_attachments (
+CREATE TABLE IF NOT EXISTS service_attachments (
     id VARCHAR(64) NOT NULL,
     booking_id VARCHAR(64) NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     file_url VARCHAR(500) NOT NULL,
+    content_type VARCHAR(100) NOT NULL DEFAULT 'application/octet-stream',
+    file_data LONGBLOB NULL,
     file_size_bytes BIGINT NOT NULL,
     uploaded_by_user_id VARCHAR(64) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -434,7 +412,7 @@ CREATE TABLE service_attachments (
 -- Table 19: admin_audit_logs
 -- Immutable platform administrative action trail
 -- ====================================================================
-CREATE TABLE admin_audit_logs (
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
     id BIGINT AUTO_INCREMENT NOT NULL,
     admin_user_id VARCHAR(64) NOT NULL,
     action_type VARCHAR(64) NOT NULL,

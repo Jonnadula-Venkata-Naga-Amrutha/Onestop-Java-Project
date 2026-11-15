@@ -1,20 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  AppNotification,
+  AdminAuditLog,
   Booking,
+  Complaint,
+  Invoice,
   ProviderProfile,
   Quotation,
   Review,
+  ServiceCategory,
   User,
-  UserRole,
   VerificationRequest,
-  Complaint,
-  AppNotification
 } from './types';
 import { dbService } from './services/storage';
 import { Language } from './data/translations';
 import { NLPSearchResult } from './services/aiEngine';
 
-// Components
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import ServiceCategories from './components/ServiceCategories';
@@ -30,31 +31,32 @@ import EmergencyBookingModal from './components/EmergencyBookingModal';
 import SmartAssistantDrawer from './components/SmartAssistantDrawer';
 import JavaArchitectureModal from './components/JavaArchitectureModal';
 import NotificationDrawer from './components/NotificationDrawer';
+import AuthModal from './components/AuthModal';
 
 export default function App() {
-  // Global Platform State
-  const [currentUser, setCurrentUser] = useState<User>(dbService.getCurrentUser());
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [lang, setLang] = useState<Language>('en');
   const [activeView, setActiveView] = useState<'landing' | 'discovery' | 'dashboard'>('landing');
-
-  // Database Records
-  const [providers, setProviders] = useState<ProviderProfile[]>(dbService.getProviders());
-  const [categories, setCategories] = useState(dbService.getCategories());
-  const [bookings, setBookings] = useState<Booking[]>(dbService.getBookings());
+  const [providers, setProviders] = useState<ProviderProfile[]>([]);
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [verifications, setVerifications] = useState<VerificationRequest[]>(dbService.getVerifications());
-  const [complaints, setComplaints] = useState<Complaint[]>(dbService.getComplaints());
+  const [verifications, setVerifications] = useState<VerificationRequest[]>([]);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [users, setUsers] = useState<User[]>(dbService.getAllUsers());
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
-  // Search Filter State for Discovery
-  const [discoveryCategory, setDiscoveryCategory] = useState<string>('');
-  const [discoveryCity, setDiscoveryCity] = useState<string>('');
-  const [discoveryBudget, setDiscoveryBudget] = useState<number | undefined>(undefined);
-  const [discoveryUrgent, setDiscoveryUrgent] = useState<boolean>(false);
+  const [discoveryCategory, setDiscoveryCategory] = useState('');
+  const [discoveryCity, setDiscoveryCity] = useState('');
+  const [discoveryBudget, setDiscoveryBudget] = useState<number | undefined>();
+  const [discoveryUrgent, setDiscoveryUrgent] = useState(false);
 
-  // Active Modals & Drawers
   const [selectedProfileProvider, setSelectedProfileProvider] = useState<ProviderProfile | null>(null);
   const [selectedBookingProvider, setSelectedBookingProvider] = useState<ProviderProfile | null>(null);
   const [comparisonBookingId, setComparisonBookingId] = useState<string | null>(null);
@@ -63,85 +65,174 @@ export default function App() {
   const [isJavaModalOpen, setIsJavaModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  const refreshState = () => {
-    setCurrentUser(dbService.getCurrentUser());
-    setProviders(dbService.getProviders());
-    setCategories(dbService.getCategories());
-    setBookings(dbService.getBookings());
-    setVerifications(dbService.getVerifications());
-    setComplaints(dbService.getComplaints());
-    setUsers(dbService.getAllUsers());
-    
-    // Refresh quotes & reviews
-    const allQuotes: Quotation[] = [];
-    const allReviews: Review[] = [];
-    dbService.getProviders().forEach(p => {
-      allQuotes.push(...dbService.getQuotationsByProviderId(p.id));
-      allReviews.push(...dbService.getReviewsByProviderId(p.id));
-    });
-    setQuotations(allQuotes);
-    setReviews(allReviews);
+  const refreshState = async (user = currentUser) => {
+    try {
+      const [nextProviders, nextCategories, nextReviews] = await Promise.all([
+        dbService.providers(),
+        dbService.categories(),
+        dbService.reviews(),
+      ]);
+      setProviders(nextProviders);
+      setCategories(nextCategories);
+      setReviews(nextReviews);
+      if (!user) {
+        setBookings([]);
+        setQuotations([]);
+        setVerifications([]);
+        setComplaints([]);
+        setNotifications([]);
+        setInvoices([]);
+        setUsers([]);
+        setAuditLogs([]);
+        setErrorMessage('');
+        return;
+      }
 
-    const notifs = dbService.getNotifications(dbService.getCurrentUser().id);
-    setNotifications(notifs);
+      const [nextBookings, nextQuotes, nextNotifications, nextInvoices] = await Promise.all([
+        dbService.bookings(),
+        dbService.quotations(),
+        dbService.notifications(),
+        dbService.invoices(),
+      ]);
+      setBookings(nextBookings);
+      setQuotations(nextQuotes);
+      setNotifications(nextNotifications);
+      setInvoices(nextInvoices);
+      if (user.role === 'ADMIN') {
+        const [nextVerifications, nextComplaints, nextUsers, nextAuditLogs] = await Promise.all([
+          dbService.verifications(),
+          dbService.complaints(),
+          dbService.users(),
+          dbService.auditLogs(),
+        ]);
+        setVerifications(nextVerifications);
+        setComplaints(nextComplaints);
+        setUsers(nextUsers);
+        setAuditLogs(nextAuditLogs);
+      } else if (user.role === 'PROVIDER') {
+        setVerifications(await dbService.providerVerifications());
+        setComplaints([]);
+        setUsers([]);
+        setAuditLogs([]);
+      } else {
+        setVerifications([]);
+        setComplaints([]);
+        setUsers([]);
+        setAuditLogs([]);
+      }
+      setErrorMessage('');
+    } catch (reason) {
+      setErrorMessage(reason instanceof Error ? reason.message : 'Unable to load application data.');
+    }
   };
 
   useEffect(() => {
-    refreshState();
+    const handleSessionExpired = () => {
+      setCurrentUser(null);
+      setActiveView('landing');
+      setIsAuthOpen(true);
+      setErrorMessage('Your session expired. Sign in again to continue.');
+      void refreshState(null);
+    };
+    window.addEventListener('onestop:session-expired', handleSessionExpired);
+    const initialize = async () => {
+      try {
+        const user = await dbService.me();
+        setCurrentUser(user);
+        await refreshState(user);
+      } catch (reason) {
+        if (!(reason instanceof Error) || reason.message !== 'Not signed in.') {
+          setErrorMessage(reason instanceof Error ? reason.message : 'Unable to restore the current session.');
+        }
+        await refreshState(null);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+    void initialize();
+    return () => window.removeEventListener('onestop:session-expired', handleSessionExpired);
   }, []);
 
-  // Role switching
-  const handleSelectRole = (newRole: UserRole) => {
-    const all = dbService.getAllUsers();
-    let target = all.find(u => u.role === newRole);
-    if (!target) {
-      target = all[0];
+  const handleAuthenticated = async (user: User) => {
+    setCurrentUser(user);
+    setIsAuthOpen(false);
+    setActiveView('dashboard');
+    await refreshState(user);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await dbService.logout();
+      setCurrentUser(null);
+      setActiveView('landing');
+      await refreshState(null);
+    } catch (reason) {
+      setErrorMessage(reason instanceof Error ? reason.message : 'Sign out failed.');
     }
-    dbService.setCurrentUser(target);
-    setCurrentUser(target);
-    setNotifications(dbService.getNotifications(target.id));
   };
 
-  const handleToggleLang = () => {
-    setLang(lang === 'en' ? 'te' : 'en');
-  };
+  const handleToggleLang = () => setLang(lang === 'en' ? 'te' : 'en');
 
-  // Natural Language Search Handler
-  const handleNLPSearch = (res: NLPSearchResult) => {
-    setDiscoveryCategory(res.extractedCategory || '');
-    setDiscoveryCity(res.extractedCity || '');
-    setDiscoveryBudget(res.maxBudget);
-    setDiscoveryUrgent(res.isUrgent);
+  const handleNLPSearch = (result: NLPSearchResult) => {
+    setDiscoveryCategory(result.extractedCategory || '');
+    setDiscoveryCity(result.extractedCity || '');
+    setDiscoveryBudget(result.maxBudget);
+    setDiscoveryUrgent(result.isUrgent);
     setActiveView('discovery');
   };
 
-  // Direct category card click
   const handleSelectCategory = (code: string) => {
     setDiscoveryCategory(code);
     setActiveView('discovery');
   };
 
-  const currentProviderProfile = providers.find(p => p.userId === currentUser.id) || providers[0];
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const openBooking = (provider: ProviderProfile) => {
+    if (!currentUser) {
+      setIsAuthOpen(true);
+      return;
+    }
+    setSelectedBookingProvider(provider);
+  };
+
+  const currentProviderProfile = currentUser
+    ? providers.find(provider => provider.userId === currentUser.id)
+    : undefined;
+  const unreadCount = notifications.filter(notification => !notification.isRead).length;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F7F5EF] text-[#252A28]">
-      {/* 3-Zone Navigation Header */}
       <Navbar
         currentUser={currentUser}
-        onSelectRole={handleSelectRole}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onLogout={handleLogout}
         lang={lang}
         onToggleLang={handleToggleLang}
         unreadCount={unreadCount}
-        onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onOpenEmergency={() => setIsEmergencyOpen(true)}
+        onOpenNotifications={() => currentUser ? setIsNotificationsOpen(true) : setIsAuthOpen(true)}
+        onOpenEmergency={() => currentUser ? setIsEmergencyOpen(true) : setIsAuthOpen(true)}
         onOpenJavaCode={() => setIsJavaModalOpen(true)}
         onOpenAssistant={() => setIsAssistantOpen(true)}
         activeView={activeView}
-        onNavigate={(view) => setActiveView(view as any)}
+        onNavigate={view => {
+          if (view === 'dashboard' && !currentUser) {
+            setIsAuthOpen(true);
+          } else {
+            setActiveView(view as 'landing' | 'discovery' | 'dashboard');
+          }
+        }}
       />
 
-      {/* Main View Router */}
+      {errorMessage && (
+        <div role="alert" className="mx-auto mt-3 max-w-7xl px-4 text-sm text-red-700">
+          {errorMessage}
+        </div>
+      )}
+      {isInitializing && (
+        <div role="status" className="mx-auto mt-3 max-w-7xl px-4 text-sm text-gray-600">
+          Loading ONESTOP session and service data...
+        </div>
+      )}
+
       <main className="flex-1">
         {activeView === 'landing' && (
           <div>
@@ -149,15 +240,9 @@ export default function App() {
               lang={lang}
               onSearch={handleNLPSearch}
               onExplore={() => setActiveView('discovery')}
-              onEmergency={() => setIsEmergencyOpen(true)}
+              onEmergency={() => currentUser ? setIsEmergencyOpen(true) : setIsAuthOpen(true)}
             />
-
-            <ServiceCategories
-              categories={categories}
-              lang={lang}
-              onSelectCategory={handleSelectCategory}
-            />
-
+            <ServiceCategories categories={categories} lang={lang} onSelectCategory={handleSelectCategory} />
             <LandingSections
               lang={lang}
               reviews={reviews}
@@ -176,38 +261,44 @@ export default function App() {
             initialCity={discoveryCity}
             initialBudget={discoveryBudget}
             initialUrgent={discoveryUrgent}
-            onBook={(prov) => setSelectedBookingProvider(prov)}
-            onRequestQuote={(prov) => setSelectedBookingProvider(prov)}
-            onViewProfile={(prov) => setSelectedProfileProvider(prov)}
+            onBook={openBooking}
+            onRequestQuote={openBooking}
+            onViewProfile={setSelectedProfileProvider}
           />
         )}
 
-        {activeView === 'dashboard' && (
+        {activeView === 'dashboard' && currentUser && (
           <div>
             {currentUser.role === 'CUSTOMER' && (
               <CustomerDashboard
                 currentUser={currentUser}
                 bookings={bookings}
                 quotations={quotations}
+                invoices={invoices}
                 reviews={reviews}
                 lang={lang}
-                onOpenCompareQuotes={(bookId) => setComparisonBookingId(bookId)}
+                onOpenCompareQuotes={setComparisonBookingId}
                 onExploreServices={() => setActiveView('discovery')}
-                onRefreshData={refreshState}
+                onRefreshData={() => refreshState()}
               />
             )}
-
             {currentUser.role === 'PROVIDER' && (
-              <ProviderDashboard
-                currentUser={currentUser}
-                provider={currentProviderProfile}
-                bookings={bookings}
-                quotations={quotations}
-                lang={lang}
-                onRefreshData={refreshState}
-              />
+              currentProviderProfile ? (
+                <ProviderDashboard
+                  currentUser={currentUser}
+                  provider={currentProviderProfile}
+                  categories={categories}
+                  bookings={bookings}
+                  quotations={quotations}
+                  invoices={invoices}
+                  verifications={verifications}
+                  lang={lang}
+                  onRefreshData={() => refreshState()}
+                />
+              ) : (
+                <p className="p-8 text-center text-sm text-gray-600">Provider profile is not available yet.</p>
+              )
             )}
-
             {currentUser.role === 'ADMIN' && (
               <AdminDashboard
                 currentUser={currentUser}
@@ -216,42 +307,44 @@ export default function App() {
                 bookings={bookings}
                 verifications={verifications}
                 complaints={complaints}
+                auditLogs={auditLogs}
                 lang={lang}
-                onRefreshData={refreshState}
+                onRefreshData={() => refreshState()}
               />
             )}
           </div>
         )}
       </main>
 
-      {/* Modals & Slide-in Drawers */}
       <ProviderProfileModal
         provider={selectedProfileProvider}
         reviews={reviews}
         lang={lang}
         onClose={() => setSelectedProfileProvider(null)}
-        onBook={(p) => {
+        onBook={provider => {
           setSelectedProfileProvider(null);
-          setSelectedBookingProvider(p);
+          openBooking(provider);
         }}
-        onRequestQuote={(p) => {
+        onRequestQuote={provider => {
           setSelectedProfileProvider(null);
-          setSelectedBookingProvider(p);
+          openBooking(provider);
         }}
       />
 
-      <BookingModal
-        provider={selectedBookingProvider}
-        currentUser={currentUser}
-        lang={lang}
-        onClose={() => setSelectedBookingProvider(null)}
-        onBookingCreated={() => {
-          refreshState();
-          setActiveView('dashboard');
-        }}
-      />
+      {currentUser && (
+        <BookingModal
+          provider={selectedBookingProvider}
+          currentUser={currentUser}
+          lang={lang}
+          onClose={() => setSelectedBookingProvider(null)}
+          onBookingCreated={() => {
+            void refreshState();
+            setActiveView('dashboard');
+          }}
+        />
+      )}
 
-      {comparisonBookingId && (
+      {comparisonBookingId && currentUser && (
         <QuotationComparisonModal
           bookingId={comparisonBookingId}
           quotations={quotations}
@@ -259,20 +352,20 @@ export default function App() {
           lang={lang}
           onClose={() => setComparisonBookingId(null)}
           onQuotationAccepted={() => {
-            refreshState();
+            void refreshState();
             setComparisonBookingId(null);
           }}
         />
       )}
 
-      {isEmergencyOpen && (
+      {isEmergencyOpen && currentUser && (
         <EmergencyBookingModal
           providers={providers}
           currentUser={currentUser}
           lang={lang}
           onClose={() => setIsEmergencyOpen(false)}
           onEmergencyDispatched={() => {
-            refreshState();
+            void refreshState();
             setActiveView('dashboard');
           }}
         />
@@ -283,22 +376,27 @@ export default function App() {
         onClose={() => setIsAssistantOpen(false)}
         lang={lang}
         onSelectCategory={handleSelectCategory}
-        onOpenEmergency={() => setIsEmergencyOpen(true)}
+        onOpenEmergency={() => currentUser ? setIsEmergencyOpen(true) : setIsAuthOpen(true)}
         onOpenJavaCode={() => setIsJavaModalOpen(true)}
       />
+      <JavaArchitectureModal isOpen={isJavaModalOpen} onClose={() => setIsJavaModalOpen(false)} />
 
-      <JavaArchitectureModal
-        isOpen={isJavaModalOpen}
-        onClose={() => setIsJavaModalOpen(false)}
-      />
-
-      <NotificationDrawer
-        isOpen={isNotificationsOpen}
-        onClose={() => setIsNotificationsOpen(false)}
-        notifications={notifications}
-        userId={currentUser.id}
-        onRefreshData={refreshState}
-      />
+      {currentUser && (
+        <NotificationDrawer
+          isOpen={isNotificationsOpen}
+          onClose={() => setIsNotificationsOpen(false)}
+          notifications={notifications}
+          userId={currentUser.id}
+          onRefreshData={() => refreshState()}
+        />
+      )}
+      {isAuthOpen && (
+        <AuthModal
+          categories={categories}
+          onClose={() => setIsAuthOpen(false)}
+          onAuthenticated={handleAuthenticated}
+        />
+      )}
     </div>
   );
 }

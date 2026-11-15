@@ -4,10 +4,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.skillbridge</groupId>
-    <artifactId>skillbridge-platform</artifactId>
+    <artifactId>onestop-platform</artifactId>
     <version>1.0.0</version>
     <packaging>war</packaging>
-    <name>SkillBridge — Smart Local Services Platform</name>
+    <name>ONESTOP — Smart Local Services Platform</name>
     <description>Core Java + JDBC + MySQL Local Services Marketplace without Spring Boot</description>
 
     <properties>
@@ -18,11 +18,11 @@
     </properties>
 
     <dependencies>
-        <!-- Java Servlet API (provided by Tomcat) -->
+        <!-- Tomcat 10.1 Servlet API -->
         <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>4.0.1</version>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>6.0.0</version>
             <scope>provided</scope>
         </dependency>
 
@@ -73,10 +73,17 @@
             <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.3.232</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
-        <finalName>skillbridge</finalName>
+        <finalName>onestop</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

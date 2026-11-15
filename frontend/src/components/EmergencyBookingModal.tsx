@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ProviderProfile, User } from '../types';
+import { useEffect, useState } from 'react';
+import { BookingStatus, ProviderProfile, User } from '../types';
 import { Language } from '../data/translations';
 import { dbService } from '../services/storage';
 import { AlertTriangle, Clock, MapPin, Zap, CheckCircle2, X } from 'lucide-react';
@@ -26,43 +26,44 @@ export default function EmergencyBookingModal({
   const [city, setCity] = useState('Vijayawada');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [dispatchRef, setDispatchRef] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   // Filter providers that support emergency jobs in that category
   const emergencyProviders = providers.filter(
     p => p.emergencyAvailable && p.serviceCategories.includes(selectedCategory)
   );
 
-  const [selectedProviderId, setSelectedProviderId] = useState<string>(
-    emergencyProviders[0]?.id || providers[0]?.id || ''
-  );
+  const [selectedProviderId, setSelectedProviderId] = useState('');
 
-  const selectedProvider = providers.find(p => p.id === selectedProviderId) || emergencyProviders[0];
+  const selectedProvider = emergencyProviders.find(p => p.id === selectedProviderId);
   const emergencyBaseFee = 350;
   const technicianFee = selectedProvider ? selectedProvider.baseHourlyRate * 1.5 : 600;
   const totalEmergencyEstimate = emergencyBaseFee + technicianFee;
 
-  const handleDispatch = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!emergencyProviders.some(provider => provider.id === selectedProviderId)) {
+      setSelectedProviderId(emergencyProviders[0]?.id || '');
+    }
+  }, [selectedCategory, providers, selectedProviderId]);
+
+  const handleDispatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProvider) return;
 
-    const res = dbService.createBooking({
-      customerId: currentUser.id,
-      customerName: currentUser.fullName,
-      customerPhone: currentUser.phone,
-      providerId: selectedProvider.id,
-      serviceTitle: `EMERGENCY SOS: ${selectedCategory.toLowerCase()} urgent service`,
-      categoryId: selectedCategory === 'ELECTRICIAN' ? 'cat-1' : selectedCategory === 'PLUMBER' ? 'cat-2' : 'cat-4',
-      problemDescription,
-      serviceAddress: address,
-      city,
-      scheduledDate: new Date().toISOString().split('T')[0],
-      scheduledTimeSlot: 'Immediate Emergency Dispatch (Within 45 min)',
-      isEmergency: true,
-      estimatedTotal: totalEmergencyEstimate,
-    });
-
-    if (res.success) {
-      setDispatchRef(res.booking.bookingReference);
+    setError('');
+    setSubmitting(true);
+    try {
+      const booking = await dbService.createBooking({
+        providerId: selectedProvider.id,
+        serviceTitle: `EMERGENCY SOS: ${selectedCategory.toLowerCase()} urgent service`,
+        categoryId: selectedCategory,
+        problemDescription,
+        serviceAddress: address,
+        city,
+        isEmergency: true,
+      });
+      setDispatchRef(booking.bookingReference);
       setIsSubmitted(true);
       try {
         confetti({ particleCount: 70, spread: 80, origin: { y: 0.5 } });
@@ -70,6 +71,10 @@ export default function EmergencyBookingModal({
         // ignore
       }
       onEmergencyDispatched();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Emergency request could not be submitted.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -134,6 +139,7 @@ export default function EmergencyBookingModal({
             </div>
 
             <form onSubmit={handleDispatch} className="space-y-4 text-xs">
+              {error && <p role="alert" className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700">{error}</p>}
               {/* Category Segmented Control */}
               <div>
                 <label className="block font-semibold text-gray-700 mb-1.5">Select Emergency Trade</label>
@@ -211,7 +217,7 @@ export default function EmergencyBookingModal({
                   </div>
                 ) : (
                   <p className="p-3 bg-amber-50 text-amber-800 rounded-lg text-xs">
-                    No emergency certified providers currently available for this category. Nearest standard provider will be queued.
+                    No emergency providers are currently available for this category. Try another category or return later.
                   </p>
                 )}
               </div>
@@ -277,10 +283,11 @@ export default function EmergencyBookingModal({
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 font-bold text-white bg-[#C84C4C] hover:bg-[#b03b3b] rounded-xl shadow-md transition-transform active:scale-95 flex items-center gap-1.5"
+                  disabled={submitting || !selectedProvider}
+                  className="px-6 py-2.5 font-bold text-white bg-[#C84C4C] hover:bg-[#b03b3b] rounded-xl shadow-md transition-transform active:scale-95 flex items-center gap-1.5 disabled:opacity-60"
                 >
                   <Zap className="w-4 h-4 fill-current" />
-                  <span>Dispatch Now</span>
+                  <span>{submitting ? 'Dispatching...' : 'Dispatch Now'}</span>
                 </button>
               </div>
             </form>

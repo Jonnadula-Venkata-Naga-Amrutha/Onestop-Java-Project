@@ -29,15 +29,16 @@ export default function BookingModal({
   const [scheduledDate, setScheduledDate] = useState(
     new Date(Date.now() + 86400000).toISOString().split('T')[0]
   );
-  const [scheduledTimeSlot, setScheduledTimeSlot] = useState('10:00 AM - 12:00 PM');
+  const [scheduledTimeSlot, setScheduledTimeSlot] = useState('09:00 AM - 11:00 AM');
   const [isEmergency, setIsEmergency] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [bookingRef, setBookingRef] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const estimatedTotal = isEmergency
-    ? provider.baseHourlyRate * 2 + 300
+    ? provider.baseHourlyRate * 1.5 + 350
     : provider.baseHourlyRate * 1.5;
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,7 +50,7 @@ export default function BookingModal({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!problemDescription.trim()) {
       setErrorMsg('Please describe the issue or service requirements.');
@@ -60,10 +61,10 @@ export default function BookingModal({
       return;
     }
 
-    const res = dbService.createBooking({
-      customerId: currentUser.id,
-      customerName: currentUser.fullName,
-      customerPhone: currentUser.phone,
+    setSubmitting(true);
+    setErrorMsg('');
+    try {
+      const booking = await dbService.createBooking({
       providerId: provider.id,
       serviceTitle,
       categoryId: provider.serviceCategories[0] || 'ELECTRICIAN',
@@ -73,12 +74,9 @@ export default function BookingModal({
       scheduledDate,
       scheduledTimeSlot: isEmergency ? 'Immediate Emergency Dispatch (Within 45 min)' : scheduledTimeSlot,
       isEmergency,
-      estimatedTotal,
       photoUrl: photoPreview || undefined,
-    });
-
-    if (res.success) {
-      setBookingRef(res.booking.bookingReference);
+      });
+      setBookingRef(booking.bookingReference);
       setIsSuccess(true);
       try {
         confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
@@ -86,6 +84,10 @@ export default function BookingModal({
         // ignore
       }
       onBookingCreated();
+    } catch (reason) {
+      setErrorMsg(reason instanceof Error ? reason.message : 'Booking could not be submitted.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -299,9 +301,10 @@ export default function BookingModal({
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 font-semibold text-white bg-[#173D32] hover:bg-[#102B25] rounded-xl shadow-sm transition-transform active:scale-95"
+                  disabled={submitting}
+                  className="px-6 py-2.5 font-semibold text-white bg-[#173D32] hover:bg-[#102B25] rounded-xl shadow-sm transition-transform active:scale-95 disabled:opacity-60"
                 >
-                  Confirm & Submit Request
+                  {submitting ? 'Submitting...' : 'Confirm & Submit Request'}
                 </button>
               </div>
             </form>

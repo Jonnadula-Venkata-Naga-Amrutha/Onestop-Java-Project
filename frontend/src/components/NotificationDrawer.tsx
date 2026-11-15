@@ -24,14 +24,22 @@ export default function NotificationDrawer({
   const userNotifs = notifications.filter(n => n.userId === userId);
   const unreadNotifs = userNotifs.filter(n => !n.isRead);
 
-  const handleMarkAllRead = () => {
-    dbService.markAllNotificationsRead(userId);
-    onRefreshData();
+  const handleMarkAllRead = async () => {
+    try {
+      await dbService.markAllNotificationsRead();
+      onRefreshData();
+    } catch (reason) {
+      alert(reason instanceof Error ? reason.message : 'Notifications could not be updated.');
+    }
   };
 
-  const handleMarkSingleRead = (notifId: string) => {
-    dbService.markNotificationRead(notifId);
-    onRefreshData();
+  const handleMarkSingleRead = async (notifId: string) => {
+    try {
+      await dbService.markNotificationRead(notifId);
+      onRefreshData();
+    } catch (reason) {
+      alert(reason instanceof Error ? reason.message : 'Notification could not be updated.');
+    }
   };
 
   const getIcon = (type: string) => {

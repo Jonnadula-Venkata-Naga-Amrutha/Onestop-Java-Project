@@ -10,6 +10,7 @@ public class Booking {
     private String customerId;
     private String providerId;
     private String serviceId;
+    private String serviceTitle;
     private String categoryId;
     private String problemDescription;
     private String serviceAddress;
@@ -39,6 +40,9 @@ public class Booking {
 
     public String getServiceId() { return serviceId; }
     public void setServiceId(String serviceId) { this.serviceId = serviceId; }
+
+    public String getServiceTitle() { return serviceTitle; }
+    public void setServiceTitle(String serviceTitle) { this.serviceTitle = serviceTitle; }
 
     public String getCategoryId() { return categoryId; }
     public void setCategoryId(String categoryId) { this.categoryId = categoryId; }
