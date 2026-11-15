@@ -109,5 +109,3 @@ The build performs a TypeScript check, creates the Vite frontend bundle, and pac
 - Verification currently stores credential numbers, not uploaded credential documents.
 - A provider can quote only on bookings assigned to that provider. Multi-provider bidding is not implemented.
 - Database/Tomcat end-to-end testing requires a configured local MySQL account and Tomcat 10.1 deployment.
-
-See [CURSOR_HANDOFF.md](./CURSOR_HANDOFF.md) for the endpoint inventory, build status, known limitations, and next verification steps.
